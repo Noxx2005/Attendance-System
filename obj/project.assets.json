@@ -120,7 +120,7 @@
           }
         }
       },
-      "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.5": {
+      "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.6": {
         "type": "package",
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "7.1.2"
@@ -2475,10 +2475,10 @@
         "mailkit.nuspec"
       ]
     },
-    "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.5": {
-      "sha512": "VqKkXLxsCVHNmSdUIuBtDSXL3OqX0yfDjcZxCcYD8VFNpTutl53BCFHzMb3wvw3asneHnURzC2R8VvIXn3l5Lw==",
+    "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.6": {
+      "sha512": "devoUZd8YqikCheBVYpIyvp9psM2Y2ZhOvq1zL2YSjIoq3FUQH8LpLkGak+8oAi/5DGqX8KWyLpZJSUXtOAVCw==",
       "type": "package",
-      "path": "microsoft.aspnetcore.authentication.jwtbearer/8.0.5",
+      "path": "microsoft.aspnetcore.authentication.jwtbearer/8.0.6",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2486,7 +2486,7 @@
         "THIRD-PARTY-NOTICES.TXT",
         "lib/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll",
         "lib/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.xml",
-        "microsoft.aspnetcore.authentication.jwtbearer.8.0.5.nupkg.sha512",
+        "microsoft.aspnetcore.authentication.jwtbearer.8.0.6.nupkg.sha512",
         "microsoft.aspnetcore.authentication.jwtbearer.nuspec"
       ]
     },
@@ -5871,7 +5871,7 @@
       "Dapper >= 2.1.35",
       "FluentAssertions >= 6.12.0",
       "MailKit >= 4.6.0",
-      "Microsoft.AspNetCore.Authentication.JwtBearer >= 8.0.5",
+      "Microsoft.AspNetCore.Authentication.JwtBearer >= 8.0.6",
       "Microsoft.AspNetCore.Cors >= 2.2.0",
       "Microsoft.AspNetCore.Mvc.NewtonsoftJson >= 8.0.4",
       "Microsoft.AspNetCore.Mvc.Testing >= 8.0.4",
@@ -5890,11 +5890,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\FBN-DIL-Attendance-sys-BackEnd\\Employee_History.csproj",
+      "projectUniqueName": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\Attendance-System\\Employee_History.csproj",
       "projectName": "Employee_History",
-      "projectPath": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\FBN-DIL-Attendance-sys-BackEnd\\Employee_History.csproj",
+      "projectPath": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\Attendance-System\\Employee_History.csproj",
       "packagesPath": "C:\\Users\\Bot Peter\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\FBN-DIL-Attendance-sys-BackEnd\\obj\\",
+      "outputPath": "C:\\Users\\Bot Peter\\Documents\\Visual Studio 2022\\Attendance-System\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Bot Peter\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -5942,7 +5942,7 @@
           },
           "Microsoft.AspNetCore.Authentication.JwtBearer": {
             "target": "Package",
-            "version": "[8.0.5, )"
+            "version": "[8.0.6, )"
           },
           "Microsoft.AspNetCore.Cors": {
             "target": "Package",

@@ -85,14 +85,9 @@ namespace Employee_History.DappaRepo
             // Check for existing entry today
             var existingEntry = await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
                 @"SELECT * 
-       FROM Attendance_History
-       WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
+                FROM Attendance_History
+                WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
                 new { Staff_ID, currentDate });
-
-            if (existingEntry != null)
-            {
-                throw new Exception("Staff ID already has a check-in for today.");
-            }
 
             // Set the status based on entry time
             string status;
@@ -105,18 +100,80 @@ namespace Employee_History.DappaRepo
                 status = "ON TIME";
             }
 
-            // Insert new check-in data
-            await _connection.ExecuteAsync(
-                @"INSERT INTO Attendance_History (Staff_ID, EntryTime, ExitTime, Date, CheckinStatus)
-       VALUES (@Staff_ID, @entryTime, NULL, @currentDate, @status)",
-                new { Staff_ID, entryTime, currentDate, status });
+            if (existingEntry != null)
+            {
+                // If there's already a check-in for today, update the existing record
+                await _connection.ExecuteAsync(
+                    @"UPDATE Attendance_History 
+            SET EntryTime = @entryTime, CheckinStatus = @status 
+            WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
+                    new { Staff_ID, entryTime, currentDate, status });
 
-            // Assuming Attendance_History has an auto-incrementing ID
-            // Retrieve the newly inserted record
-            return await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
-                @"SELECT * FROM Attendance_History WHERE Staff_ID = @Staff_ID AND Date = @currentDate", new { Staff_ID, currentDate });
+                // Return the updated record
+                return await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
+                    @"SELECT * 
+                    FROM Attendance_History 
+                    WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
+                    new { Staff_ID, currentDate });
+            }
+            else
+            {
+                // If no existing check-in for today, insert a new record
+                await _connection.ExecuteAsync(
+                    @"INSERT INTO Attendance_History (Staff_ID, EntryTime, ExitTime, Date, CheckinStatus)
+            VALUES (@Staff_ID, @entryTime, NULL, @currentDate, @status)",
+                    new { Staff_ID, entryTime, currentDate, status });
+
+                // Retrieve the newly inserted record
+                return await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
+                    @"SELECT * 
+            FROM Attendance_History 
+            WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
+                    new { Staff_ID, currentDate });
+            }
         }
 
+        /* public async Task<Attendance_History> Checkin(string Staff_ID)
+         {
+             // Get current date and time
+             var currentDate = DateTime.Now.Date;
+             var entryTime = DateTime.Now.TimeOfDay;
+
+             // Check for existing entry today
+             var existingEntry = await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
+                 @"SELECT * 
+        FROM Attendance_History
+        WHERE Staff_ID = @Staff_ID AND Date = @currentDate",
+                 new { Staff_ID, currentDate });
+
+             if (existingEntry != null)
+             {
+                 throw new Exception("Staff ID already has a check-in for today.");
+             }
+
+             // Set the status based on entry time
+             string status;
+             if (entryTime > new TimeSpan(11, 0, 0))
+             {
+                 status = "LATE";
+             }
+             else
+             {
+                 status = "ON TIME";
+             }
+
+             // Insert new check-in data
+             await _connection.ExecuteAsync(
+                 @"INSERT INTO Attendance_History (Staff_ID, EntryTime, ExitTime, Date, CheckinStatus)
+        VALUES (@Staff_ID, @entryTime, NULL, @currentDate, @status)",
+                 new { Staff_ID, entryTime, currentDate, status });
+
+             // Assuming Attendance_History has an auto-incrementing ID
+             // Retrieve the newly inserted record
+             return await _connection.QueryFirstOrDefaultAsync<Attendance_History>(
+                 @"SELECT * FROM Attendance_History WHERE Staff_ID = @Staff_ID AND Date = @currentDate", new { Staff_ID, currentDate });
+         }
+ */
 
         public async Task Checkout(string staff_ID)
         {

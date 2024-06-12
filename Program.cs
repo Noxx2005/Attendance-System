@@ -27,9 +27,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Generate the secret key
-var secretKey = JwtTokenGenerator.GenerateSecretKeyString();
-var keyBytes = Convert.FromBase64String(secretKey);
+// Retrieve the secret key from configuration
+var secretKey = builder.Configuration["Jwt:SecretKey"];
+var keyBytes = Encoding.ASCII.GetBytes(secretKey);
 
 // Register the secret key as a singleton service
 builder.Services.AddSingleton(secretKey);

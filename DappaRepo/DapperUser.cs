@@ -20,6 +20,7 @@ using MimeKit;
 using Employee_History.Models;
 using MailKit.Net.Smtp;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Employee_History.DappaRepo
 {
@@ -79,6 +80,12 @@ namespace Employee_History.DappaRepo
             _emailService = emailService;
         }
 
+        public async Task<IEnumerable<Notification>> GetNotification()
+        {
+            var sql = "SELECT * FROM [Notification]";
+            var notification = await _connection.QueryAsync<Notification>(sql);
+            return notification;
+        }
 
 
         public async Task<bool> AddUser(string Staff_ID, string Name, string Email, long Phone_number, string Lab_role)
@@ -103,46 +110,82 @@ namespace Employee_History.DappaRepo
                 parameters.Add("@Password", hashedPassword);
 
                 query = @"
-            IF EXISTS (SELECT 1 FROM [User] WHERE Staff_ID = @Staff_ID)
-            BEGIN
-                THROW 51000, 'Staff ID already exists.', 1;
-            END
-            INSERT INTO [User] (Staff_ID, Name, Email, Phone_number, Lab_role, Password) 
-            VALUES (@Staff_ID, @Name, @Email, @Phone_number, @Lab_role, @Password);
-            SELECT * FROM [User] WHERE Staff_ID = @Staff_ID;";
+        IF EXISTS (SELECT 1 FROM [User] WHERE Staff_ID = @Staff_ID)
+        BEGIN
+            THROW 51000, 'Staff ID already exists.', 1;
+        END
+        INSERT INTO [User] (Staff_ID, Name, Email, Phone_number, Lab_role, Password) 
+        VALUES (@Staff_ID, @Name, @Email, @Phone_number, @Lab_role, @Password);
+        SELECT * FROM [User] WHERE Staff_ID = @Staff_ID;";
             }
             else if (Lab_role == "C3")
             {
                 query = @"
-            IF EXISTS (SELECT 1 FROM [User] WHERE Staff_ID = @Staff_ID)
-            BEGIN
-                THROW 51000, 'Staff ID already exists.', 1;
-            END
-            INSERT INTO [User] (Staff_ID, Name, Email, Phone_number, Lab_role) 
-            VALUES (@Staff_ID, @Name, @Email, @Phone_number, @Lab_role);
-            SELECT * FROM [User] WHERE Staff_ID = @Staff_ID;";
+        IF EXISTS (SELECT 1 FROM [User] WHERE Staff_ID = @Staff_ID)
+        BEGIN
+            THROW 51000, 'Staff ID already exists.', 1;
+        END
+        INSERT INTO [User] (Staff_ID, Name, Email, Phone_number, Lab_role) 
+        VALUES (@Staff_ID, @Name, @Email, @Phone_number, @Lab_role);
+        SELECT * FROM [User] WHERE Staff_ID = @Staff_ID;";
             }
             else
             {
                 throw new ArgumentException("Invalid Lab_role specified.");
             }
 
-            await _connection.OpenAsync();
-            var user = await _connection.QueryFirstOrDefaultAsync<User>(query, parameters);
-
-            if (password != null)
-            {
-                var emailRequest = new Email
+          
+                try
                 {
-                    To = Email,
-                    Subject = "Your new password",
-                    Body = $"Your new password is: {password}"
-                };
-                _emailService.SendEmail(emailRequest);
-            }
+                    await _connection.OpenAsync();
 
-            return user != null;
+                    using (var transaction = _connection.BeginTransaction())
+                    {
+                        var user = await _connection.QueryFirstOrDefaultAsync<User>(
+                            query, parameters, transaction);
+
+                        if (user != null)
+                        {
+                            var notificationParameters = new DynamicParameters();
+                            notificationParameters.Add("@Staff_ID", Staff_ID);
+                            notificationParameters.Add("@Message", $"{Staff_ID} waiting for approval");
+
+                            string notificationQuery = @"
+                        INSERT INTO [Notification] (Staff_ID, Message) 
+                        VALUES (@Staff_ID, @Message);";
+
+                            await _connection.ExecuteAsync(notificationQuery, notificationParameters, transaction);
+
+                            transaction.Commit();
+
+                            if (password != null)
+                            {
+                                var emailRequest = new Email
+                                {
+                                    To = Email,
+                                    Subject = "Your new password",
+                                    Body = $"Your new password is: {password}"
+                                };
+                                _emailService.SendEmail(emailRequest);
+                            }
+
+                            return true;
+                        }
+                        else
+                        {
+                            transaction.Rollback();
+                            return false;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    return false;
+                }
+            
         }
+
 
         public async Task RequestPasswordResetAsync(string email)
         {
@@ -258,13 +301,33 @@ namespace Employee_History.DappaRepo
             return await _connection.QueryFirstOrDefaultAsync<User>("AddPassword", parameters, commandType: CommandType.StoredProcedure);
         }
 
-        public async Task<int> ConfirmPassword(string Staff_ID, string Password)
+        public async Task<int> ConfirmPassword(string staff_ID, string password)
         {
-            var parameters = new DynamicParameters();
-            parameters.Add("@Staff_ID", Staff_ID);
-            parameters.Add("@Password", Password);
-            return await _connection.ExecuteScalarAsync<int>("ConfirmPassword", parameters, commandType: CommandType.StoredProcedure);
+            const string query = @"
+            SELECT Password
+            FROM [User]
+            WHERE Staff_ID = @Staff_ID";
+
+            var storedPassword = await _connection.QueryFirstOrDefaultAsync<string>(query, new { Staff_ID = staff_ID });
+
+            if (storedPassword == null)
+            {
+                // User not found
+                return -1;
+            }
+
+            if (VerifyPassword(password, storedPassword))
+            {
+                // Password matches
+                return 0;
+            }
+            else
+            {
+                // Password does not match
+                return -1;
+            }
         }
+
 
 
         public async Task<bool> IsUserApprovedAsync(string staff_ID)
@@ -344,12 +407,32 @@ namespace Employee_History.DappaRepo
         public async Task<int> ApproveUserAsync(string staff_ID)
         {
             string sql = @"
-            UPDATE [User]
-            SET ApprovalStatus = 1,
-                ApprovalDate = GETUTCDATE()  -- Use GETUTCDATE() for UTC time
-            WHERE Staff_ID = @Staff_ID";
+            BEGIN TRANSACTION;
+
+            BEGIN TRY
+                -- Update the user approval status and date
+                UPDATE [User]
+                SET ApprovalStatus = 1,
+                    ApprovalDate = GETUTCDATE()  -- Use GETUTCDATE() for UTC time
+                WHERE Staff_ID = @Staff_ID;
+
+                -- Delete the corresponding notification
+                DELETE FROM [Notification]
+                WHERE Staff_ID = @Staff_ID;
+
+                -- Commit the transaction if both operations succeed
+                COMMIT TRANSACTION;
+            END TRY
+            BEGIN CATCH
+                -- Rollback the transaction if there is an error
+                ROLLBACK TRANSACTION;
+                -- Raise the error to the caller
+                THROW;
+            END CATCH";
+
             return await _connection.ExecuteAsync(sql, new { Staff_ID = staff_ID });
         }
+
 
         public async Task<int> StoreDeviceInfo(string Staff_ID, string DeviceID, string DeviceModel)
         {
